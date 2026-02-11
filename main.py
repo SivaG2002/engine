@@ -52,7 +52,6 @@ def login():
 
 
 # ---------------- CREATE STUDENT ----------------
-
 @app.route("/api/admin/students", methods=["POST"])
 def create_student():
     data = request.get_json()
@@ -64,11 +63,12 @@ def create_student():
     dept = data["dept"]
     year = data["year"]
     phone = data["phone"]
+    room_id = data["room_id"]
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # INSERT INTO users table (USE password_hash column)
+    # Insert into users
     cursor.execute(
         "INSERT INTO users (name, email, password_hash, role) VALUES (%s, %s, %s, %s)",
         (name, email, password, "student")
@@ -76,10 +76,16 @@ def create_student():
 
     user_id = cursor.lastrowid
 
-    # INSERT INTO students table
+    # Insert into students with room_id
     cursor.execute(
-        "INSERT INTO students (user_id, rollNo, dept, year, phone) VALUES (%s, %s, %s, %s, %s)",
-        (user_id, rollNo, dept, year, phone)
+        "INSERT INTO students (user_id, rollNo, dept, year, phone, room_id) VALUES (%s, %s, %s, %s, %s, %s)",
+        (user_id, rollNo, dept, year, phone, room_id)
+    )
+
+    # Increase room occupancy
+    cursor.execute(
+        "UPDATE rooms SET occupied = occupied + 1 WHERE id = %s",
+        (room_id,)
     )
 
     conn.commit()
@@ -87,6 +93,7 @@ def create_student():
     conn.close()
 
     return jsonify({"message": "Student created"}), 201
+
 
 
 # ---------------- ADMIN SUMMARY ----------------
@@ -240,11 +247,14 @@ SELECT
     s.rollNo,
     s.dept,
     s.year,
-    s.phone
+    s.phone,
+    r.roomNo
 FROM users u
 JOIN students s ON u.id = s.user_id
+LEFT JOIN rooms r ON s.room_id = r.id
 WHERE u.role = 'student'
 """
+
 
 
     cursor.execute(query)
@@ -254,6 +264,25 @@ WHERE u.role = 'student'
     conn.close()
 
     return jsonify(students)
+
+
+@app.route("/api/admin/available-rooms", methods=["GET"])
+def get_available_rooms():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT id, roomNo, capacity, occupied
+        FROM rooms
+        WHERE occupied < capacity
+    """)
+
+    rooms = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify(rooms), 200
 
 
 # ---------------- RUN APP ----------------
