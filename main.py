@@ -493,6 +493,57 @@ def update_complaint_status(complaint_id):
 
     return jsonify({"message": "Status updated"})
 
+@app.route("/api/admin/notices", methods=["GET"])
+def get_notices():
+    conn = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="1234",
+        database="hostel_db"
+    )
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT id, title, content, summary, created_at
+        FROM notices
+        ORDER BY created_at DESC
+    """)
+
+    notices = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify(notices)
+
+
+
+@app.route("/api/admin/notices", methods=["POST"])
+def create_notice():
+    data = request.get_json()
+
+    conn = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="1234",
+        database="hostel_db"
+    )
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO notices (title, content, summary)
+        VALUES (%s, %s, %s)
+    """, (
+        data.get("title"),
+        data.get("content"),
+        data.get("summary")
+    ))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return jsonify({"message": "Notice created successfully"})
 
 # ---------------- RUN APP ----------------
 
