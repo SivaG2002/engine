@@ -467,6 +467,33 @@ def get_complaints():
     return jsonify(rows)
 
 
+@app.route("/api/admin/complaints/<int:complaint_id>", methods=["PUT"])
+def update_complaint_status(complaint_id):
+    data = request.get_json()
+    status = data.get("status")
+
+    conn = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="1234",
+        database="hostel_db"
+    )
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE complaints
+        SET status = %s
+        WHERE id = %s
+    """, (status, complaint_id))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return jsonify({"message": "Status updated"})
+
+
 # ---------------- RUN APP ----------------
 
 if __name__ == "__main__":
