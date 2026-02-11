@@ -285,6 +285,128 @@ def get_available_rooms():
     return jsonify(rooms), 200
 
 
+@app.route("/api/admin/rooms", methods=["GET"])
+def get_rooms():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT id, roomNo, capacity, occupied
+        FROM rooms
+    """)
+    rooms = cursor.fetchall()
+
+    # Get students per room
+    for room in rooms:
+        cursor.execute("""
+            SELECT u.id, u.name
+            FROM students s
+            JOIN users u ON u.id = s.user_id
+            WHERE s.room_id = %s
+        """, (room["id"],))
+        room["students"] = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify(rooms), 200
+
+
+@app.route("/api/admin/allocate", methods=["POST"])
+def allocate_student():
+    data = request.get_json()
+    student_id = data["student_id"]
+    room_id = data["room_id"]
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # assign room
+    cursor.execute("""
+        UPDATE students SET room_id = %s WHERE user_id = %s
+    """, (room_id, student_id))
+
+    # increase occupied
+    cursor.execute("""
+        UPDATE rooms SET occupied = occupied + 1 WHERE id = %s
+    """, (room_id,))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return jsonify({"message": "Student allocated"}), 200
+
+
+@app.route("/api/admin/rooms", methods=["POST"])
+def add_room():
+    data = request.get_json()
+
+    roomNo = data["roomNo"]
+    capacity = data["capacity"]
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO rooms (roomNo, capacity, occupied)
+        VALUES (%s, %s, 0)
+    """, (roomNo, capacity))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return jsonify({"message": "Room added"}), 201
+
+
+@app.route("/api/admin/unassigned-students", methods=["GET"])
+def get_unassigned_students():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT u.id, u.name
+        FROM users u
+        JOIN students s ON u.id = s.user_id
+        WHERE s.room_id IS NULL
+    """)
+
+    students = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify(students)
+
+
+
+@app.route("/api/admin/allocate", methods=["POST"])
+def allocate():
+    data = request.get_json()
+    student_id = data["student_id"]
+    room_id = data["room_id"]
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "UPDATE students SET room_id=%s WHERE user_id=%s",
+        (room_id, student_id)
+    )
+
+    cursor.execute(
+        "UPDATE rooms SET occupied = occupied + 1 WHERE id=%s",
+        (room_id,)
+    )
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return jsonify({"message": "Allocated"})
+
+
 # ---------------- RUN APP ----------------
 
 if __name__ == "__main__":
