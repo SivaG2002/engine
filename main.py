@@ -407,6 +407,33 @@ def allocate():
     return jsonify({"message": "Allocated"})
 
 
+@app.route("/api/admin/fees", methods=["GET"])
+def get_fees():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+    SELECT 
+        f.id,
+        f.studentId,
+        u.name,
+        f.amount,
+        f.due_date,
+        f.status
+    FROM fees f
+    JOIN users u ON f.studentId = u.id
+""")
+
+
+    fees = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify(fees)
+
+
+
 # ---------------- RUN APP ----------------
 
 if __name__ == "__main__":
