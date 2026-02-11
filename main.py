@@ -50,34 +50,6 @@ def login():
 
 # ---------------- GET ALL STUDENTS ----------------
 
-@app.route("/api/admin/students", methods=["GET"])
-def get_students():
-
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    query = """
-    SELECT 
-        u.id,
-        u.name,
-        u.email,
-        s.rollNo,
-        s.dept,
-        s.year,
-        s.phone
-    FROM users u
-    JOIN students s ON u.id = s.user_id
-    WHERE u.role='student'
-    """
-
-    cursor.execute(query)
-    students = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
-    return jsonify(students), 200
-
 
 # ---------------- CREATE STUDENT ----------------
 
@@ -253,6 +225,36 @@ def admin_dashboard():
         "available_rooms": available_rooms,
         "pending_complaints": pending_complaints
     })
+
+
+@app.route("/api/admin/students", methods=["GET"])
+def get_students():
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    query = """
+SELECT 
+    u.id,
+    u.name,
+    u.email,
+    s.rollNo,
+    s.dept,
+    s.year,
+    s.phone
+FROM users u
+JOIN students s ON u.id = s.user_id
+WHERE u.role = 'student'
+"""
+
+
+    cursor.execute(query)
+    students = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify(students)
 
 
 # ---------------- RUN APP ----------------
