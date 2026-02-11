@@ -3,7 +3,7 @@ from flask_cors import CORS
 import mysql.connector
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True, origins=["http://localhost:9002"])
 
 # ---------------- DB CONFIG ----------------
 
@@ -55,35 +55,34 @@ def login():
 
 @app.route("/api/admin/students", methods=["POST"])
 def create_student():
-    data = request.json
+    data = request.get_json()
 
-    name = data.get("name")
-    email = data.get("email")
-    password = data.get("password")
-    rollNo = data.get("rollNo")
-    dept = data.get("dept")
-    year = data.get("year")
-    phone = data.get("phone")
+    name = data["name"]
+    email = data["email"]
+    password = data["password"]
+    rollNo = data["rollNo"]
+    dept = data["dept"]
+    year = data["year"]
+    phone = data["phone"]
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Insert into users
+    # INSERT INTO users table (USE password_hash column)
     cursor.execute(
-        "INSERT INTO users (name, email, password, role) VALUES (%s, %s, %s, %s)",
+        "INSERT INTO users (name, email, password_hash, role) VALUES (%s, %s, %s, %s)",
         (name, email, password, "student")
     )
 
     user_id = cursor.lastrowid
 
-    # Insert into students
+    # INSERT INTO students table
     cursor.execute(
         "INSERT INTO students (user_id, rollNo, dept, year, phone) VALUES (%s, %s, %s, %s, %s)",
         (user_id, rollNo, dept, year, phone)
     )
 
     conn.commit()
-
     cursor.close()
     conn.close()
 
