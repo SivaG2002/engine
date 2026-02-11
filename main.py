@@ -216,6 +216,45 @@ def get_student_fees(user_id):
 
     return jsonify(fees), 200
 
+
+
+
+@app.route("/api/admin/dashboard", methods=["GET"])
+def admin_dashboard():
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # total students
+    cursor.execute("SELECT COUNT(*) AS total FROM users WHERE role='student'")
+    total_students = cursor.fetchone()["total"]
+
+    # available rooms
+    cursor.execute("""
+        SELECT COUNT(*) AS available
+        FROM rooms
+        WHERE occupied < capacity
+    """)
+    available_rooms = cursor.fetchone()["available"]
+
+    # active complaints
+    cursor.execute("""
+        SELECT COUNT(*) AS pending
+        FROM complaints
+        WHERE status='Pending' OR status='In Progress'
+    """)
+    pending_complaints = cursor.fetchone()["pending"]
+
+    cursor.close()
+    conn.close()
+
+    return jsonify({
+        "total_students": total_students,
+        "available_rooms": available_rooms,
+        "pending_complaints": pending_complaints
+    })
+
+
 # ---------------- RUN APP ----------------
 
 if __name__ == "__main__":
