@@ -434,6 +434,39 @@ def get_fees():
 
 
 
+
+@app.route("/api/admin/complaints", methods=["GET"])
+def get_complaints():
+
+    conn = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="1234",
+        database="hostel_db"
+    )
+
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT 
+            c.id,
+            c.title,
+            c.description,
+            c.status,
+            c.created_at,
+            u.name AS studentName
+        FROM complaints c
+        JOIN users u ON c.student_id = u.id
+    """)
+
+    rows = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify(rows)
+
+
 # ---------------- RUN APP ----------------
 
 if __name__ == "__main__":
