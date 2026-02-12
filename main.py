@@ -719,6 +719,24 @@ def student_create_complaint():
 
     return jsonify({"message": "Complaint submitted"}), 201
 
+@app.route("/api/student/notices", methods=["GET"])
+def student_get_notices():
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT id, title, content, summary, created_at AS date
+        FROM notices
+        ORDER BY created_at DESC
+    """)
+
+    notices = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify(notices), 200
 
 
 # ---------------- RUN APP ----------------
