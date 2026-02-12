@@ -555,6 +555,7 @@ def student_me():
         return jsonify({"error": "Not logged in"}), 401
 
     user_id = session["user_id"]
+    conn = get_db_connection()
 
     cursor = conn.cursor(dictionary=True)
 
@@ -591,7 +592,7 @@ def student_me():
     fee = cursor.fetchone()
 
     cursor.close()
-
+    conn.close()
     return jsonify({
         "id": student["id"],
         "name": student["name"],
@@ -623,6 +624,54 @@ def get_student_dashboard(user_id):
     conn.close()
 
     return jsonify(student)
+
+
+@app.route("/api/student/fees", methods=["GET"])
+def student_get_own_fees():
+
+    user_id = request.args.get("user_id")
+
+    if not user_id:
+        return jsonify({"message": "User ID required"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT id, amount, due_date, status
+        FROM fees
+        WHERE studentId = %s
+        ORDER BY due_date DESC
+    """, (user_id,))
+
+    data = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify(data), 200
+
+
+@app.route("/api/student/payments/<int:user_id>")
+def get_student_payment_history(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT id, amount, payment_date
+        FROM payments
+        WHERE studentId = %s
+        ORDER BY payment_date DESC
+    """, (user_id,))
+
+    payments = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify(payments), 200
+
+
 
 
 # ---------------- RUN APP ----------------
