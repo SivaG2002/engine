@@ -3,7 +3,9 @@ from flask_cors import CORS
 import mysql.connector
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=["http://localhost:9002"])
+#CORS(app, supports_credentials=True, origins=["http://localhost:9002"])
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True,origins=["http://localhost:9002"])
+
 
 # ---------------- DB CONFIG ----------------
 
@@ -671,6 +673,51 @@ def get_student_payment_history(user_id):
 
     return jsonify(payments), 200
 
+
+@app.route("/api/student/my-complaints/<int:user_id>", methods=["GET"])
+def student_get_my_complaints(user_id):
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT id, title, description, status, created_at AS date
+        FROM complaints
+        WHERE student_id = %s
+        ORDER BY created_at DESC
+    """, (user_id,))
+
+    complaints = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify(complaints), 200
+
+@app.route("/api/student/my-complaints", methods=["POST", "OPTIONS"])
+def student_create_complaint():
+
+    if request.method == "OPTIONS":
+        return '', 200
+
+    data = request.json
+    student_id = data.get("student_id")
+    title = data.get("title")
+    description = data.get("description")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO complaints (student_id, title, description, status, created_at)
+        VALUES (%s, %s, %s, 'pending', NOW())
+    """, (student_id, title, description))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return jsonify({"message": "Complaint submitted"}), 201
 
 
 
