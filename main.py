@@ -29,7 +29,7 @@ def login():
     cursor = conn.cursor(dictionary=True)
 
     cursor.execute(
-        "SELECT * FROM users WHERE email=%s AND password=%s",
+        "SELECT * FROM users WHERE email=%s AND password_hash=%s",
         (email, password)
     )
 
@@ -544,6 +544,86 @@ def create_notice():
     conn.close()
 
     return jsonify({"message": "Notice created successfully"})
+
+
+
+@app.route("/api/student/me", methods=["GET"])
+def student_me():
+    from flask import session, jsonify
+
+    if "user_id" not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    user_id = session["user_id"]
+
+    cursor = conn.cursor(dictionary=True)
+
+    # Fetch student basic info
+    cursor.execute("""
+        SELECT u.id, u.name, u.email, sp.room_id
+        FROM users u
+        JOIN student_profiles sp ON sp.user_id = u.id
+        WHERE u.id = %s AND u.role = 'student'
+    """, (user_id,))
+    
+    student = cursor.fetchone()
+
+    if not student:
+        return jsonify({"error": "Student not found"}), 404
+
+    # Fetch room number (if allocated)
+    roomNo = None
+    if student["room_id"]:
+        cursor.execute("SELECT roomNo FROM rooms WHERE id = %s", (student["room_id"],))
+        room = cursor.fetchone()
+        if room:
+            roomNo = room["roomNo"]
+
+    # Fetch fee info
+    cursor.execute("""
+        SELECT amount, status, due_date
+        FROM fees
+        WHERE studentId = %s
+        ORDER BY id DESC
+        LIMIT 1
+    """, (user_id,))
+    
+    fee = cursor.fetchone()
+
+    cursor.close()
+
+    return jsonify({
+        "id": student["id"],
+        "name": student["name"],
+        "email": student["email"],
+        "roomNo": roomNo,
+        "fee": fee
+    })
+
+@app.route("/api/student/<int:user_id>")
+def get_student_dashboard(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT u.id, u.name, u.email,
+               r.roomNo,
+               f.amount,
+               f.status AS feeStatus
+        FROM users u
+        LEFT JOIN students s ON u.id = s.user_id
+        LEFT JOIN rooms r ON s.room_id = r.id
+        LEFT JOIN fees f ON f.studentId = u.id
+        WHERE u.id = %s
+    """, (user_id,))
+
+    student = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify(student)
+
 
 # ---------------- RUN APP ----------------
 
